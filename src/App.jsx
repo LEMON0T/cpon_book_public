@@ -1,3 +1,4 @@
+import InstallPrompt from './components/InstallPrompt'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Ticket, BookHeart, Settings, LogOut, Hourglass, Search, Sparkles, Trophy } from 'lucide-react'
 import { supabase } from './lib/supabase'
@@ -98,9 +99,12 @@ export default function App() {
 
   return (
     <div className="mx-auto min-h-screen max-w-md pt-[env(safe-area-inset-top)]">
-      <header className="flex items-center justify-between px-5 pb-2 pt-6">
-        <h1 className="font-display text-3xl font-bold">{tab === 'tickets' ? book.title : tab === 'memories' ? 'Közös napló' : 'Admin'}</h1>
-        <button onClick={() => supabase.auth.signOut()} aria-label="Kilépés" className="text-paper/50"><LogOut size={20} /></button>
+      <header className="flex items-center justify-between gap-2 px-5 pb-2 pt-6">
+        <h1 className="truncate font-display text-3xl font-bold">{tab === 'tickets' ? book.title : tab === 'memories' ? 'Közös napló' : 'Admin'}</h1>
+        <div className="flex shrink-0 items-center gap-3">
+          <InstallPrompt compact />
+          <button onClick={() => supabase.auth.signOut()} aria-label="Kilépés" className="text-paper/50"><LogOut size={20} /></button>
+        </div>
       </header>
 
       <main className="space-y-5 px-5 pb-32 pt-3">

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
-import { Download, Heart, MoreVertical, PlusSquare, Share, ShieldCheck } from 'lucide-react'
+import { useState } from 'react'
+import { Heart, ShieldCheck } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import InfoModal from './InfoModal'
+import InstallPrompt from './InstallPrompt'
 
 export default function Login() {
   const [mode, setMode] = useState(() =>
@@ -13,44 +14,6 @@ export default function Login() {
   const [err, setErr] = useState('')
   const [msg, setMsg] = useState('')
   const [showInfo, setShowInfo] = useState(false)
-
-  const [promptEvent, setPromptEvent] = useState(null)
-  const [showGuide, setShowGuide] = useState(false)
-  const [isStandalone, setIsStandalone] = useState(false)
-
-  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
-
-  useEffect(() => {
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
-    setIsStandalone(standalone)
-
-    const onBeforeInstall = (e) => {
-      e.preventDefault()
-      setPromptEvent(e)
-    }
-    const onInstalled = () => {
-      setPromptEvent(null)
-      setIsStandalone(true)
-      setShowGuide(false)
-    }
-
-    window.addEventListener('beforeinstallprompt', onBeforeInstall)
-    window.addEventListener('appinstalled', onInstalled)
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstall)
-      window.removeEventListener('appinstalled', onInstalled)
-    }
-  }, [])
-
-  const installApp = async () => {
-    if (promptEvent) {
-      promptEvent.prompt()
-      const { outcome } = await promptEvent.userChoice
-      if (outcome === 'accepted') setPromptEvent(null)
-      return
-    }
-    setShowGuide((v) => !v)
-  }
 
   const switchMode = (next) => {
     setMode(next)
@@ -156,35 +119,9 @@ export default function Login() {
         </button>
       )}
 
-      {!isStandalone && (
-        <div className="w-full max-w-xs space-y-2 pt-2">
-          <button
-            type="button"
-            onClick={installApp}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-paper/15 bg-paper/10 py-3 text-xs font-bold text-paper active:scale-95"
-          >
-            <Download size={15} className="text-gold" /> Alkalmazás telepítése a telefonra
-          </button>
-
-          {showGuide && (
-            <div className="space-y-1.5 rounded-2xl border border-gold/30 bg-paper/10 p-3.5 text-xs text-paper/85">
-              {isIos ? (
-                <>
-                  <p className="font-bold text-gold">Telepítés iPhone-on (Safariban):</p>
-                  <p className="flex items-center gap-1.5">1. Koppints alul a <Share size={14} className="inline text-gold" /> <strong>Megosztás</strong> ikonra.</p>
-                  <p className="flex items-center gap-1.5">2. Válaszd a <PlusSquare size={14} className="inline text-gold" /> <strong>Hozzáadás a főképernyőhöz</strong> opciót.</p>
-                </>
-              ) : (
-                <>
-                  <p className="font-bold text-gold">Telepítés Androidon / böngészőből:</p>
-                  <p className="flex items-center gap-1.5">1. Koppints a jobb felső <MoreVertical size={14} className="inline text-gold" /> <strong>menü</strong> ikonra.</p>
-                  <p className="flex items-center gap-1.5">2. Válaszd az <strong>Alkalmazás telepítése</strong> vagy <strong>Hozzáadás a kezdőképernyőhöz</strong> opciót.</p>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      <div className="w-full max-w-xs pt-2">
+        <InstallPrompt />
+      </div>
 
       <button
         type="button"
