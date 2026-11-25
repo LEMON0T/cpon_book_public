@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Download, Heart, PlusSquare, Share } from 'lucide-react'
+import { Download, Heart, PlusSquare, Share, ShieldCheck } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import InfoModal from './InfoModal'
 
 export default function Login() {
   const [isRegister, setIsRegister] = useState(() => Boolean(new URLSearchParams(window.location.search).get('invite')))
@@ -8,6 +9,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
+  const [showInfo, setShowInfo] = useState(false)
 
   const [promptEvent, setPromptEvent] = useState(null)
   const [showIosGuide, setShowIosGuide] = useState(false)
@@ -106,6 +108,16 @@ export default function Login() {
           )}
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={() => setShowInfo(true)}
+        className="flex items-center gap-1.5 text-xs text-paper/45 hover:text-paper/70"
+      >
+        <ShieldCheck size={14} /> Adatkezelés és tudnivalók
+      </button>
+
+      {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
     </div>
   )
 }
