@@ -4,7 +4,7 @@ import { notifyDiscord } from '../lib/discord'
 import { rollRarity } from '../lib/rarity'
 import CardReveal from './CardReveal'
 
-export default function RedeemModal({ ticket, onClose, onDone }) {
+export default function RedeemModal({ book, ticket, onClose, onDone }) {
   const [date, setDate] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -13,7 +13,13 @@ export default function RedeemModal({ ticket, onClose, onDone }) {
   const submit = async () => {
     setBusy(true)
     const rolled = rollRarity()
-    const { error } = await supabase.from('redemptions').insert({ ticket_id: ticket.id, desired_date: date || null, note, rarity: rolled })
+    const { error } = await supabase.from('redemptions').insert({
+      book_id: book.id,
+      ticket_id: ticket.id,
+      desired_date: date || null,
+      note,
+      rarity: rolled
+    })
     if (error) { alert(error.message); setBusy(false); return }
     if (rolled === 'common') {
       const patch = {}
@@ -21,7 +27,7 @@ export default function RedeemModal({ ticket, onClose, onDone }) {
       if (ticket.type === 'cooldown') patch.last_redeemed_at = new Date().toISOString()
       if (Object.keys(patch).length) await supabase.from('tickets').update(patch).eq('id', ticket.id)
     }
-    notifyDiscord(ticket, { desired_date: date, note, rarity: rolled })
+    notifyDiscord(book.discord_webhook, ticket, { desired_date: date, note, rarity: rolled })
     setRarity(rolled)
   }
 

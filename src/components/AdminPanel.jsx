@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Trash2, Undo2 } from 'lucide-react'
+import { Check, Copy, Trash2, Undo2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { ICONS, TYPE_LABEL } from '../lib/utils'
 import { RARITY } from '../lib/rarity'
@@ -7,21 +7,44 @@ import { RARITY } from '../lib/rarity'
 const empty = { title: '', description: '', category: '', type: 'unlimited', count: 3, cooldown: 30, icon: 'Heart' }
 const input = 'w-full rounded-xl bg-white/90 p-3 text-ink'
 
-export default function AdminPanel({ tickets, reds, onChange }) {
+export default function AdminPanel({ book, onBookChange, tickets, reds, onChange }) {
   const [f, setF] = useState(empty)
+  const [webhook, setWebhook] = useState(book.discord_webhook || '')
+  const [copied, setCopied] = useState(false)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const pending = reds.filter((r) => r.status === 'pending')
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(book.invite_code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  const saveWebhook = async (e) => {
+    e.preventDefault()
+    const { data, error } = await supabase
+      .from('books')
+      .update({ discord_webhook: webhook.trim() || null })
+      .eq('id', book.id)
+      .select()
+      .single()
+    if (error) return alert(error.message)
+    onBookChange(data)
+    alert('Beállítások mentve!')
+  }
 
   const create = async (e) => {
     e.preventDefault()
     const n = f.type === 'limited' ? +f.count : f.type === 'vip' ? 1 : null
     const { error } = await supabase.from('tickets').insert({
+      book_id: book.id,
       title: f.title, description: f.description, category: f.category || 'Általános', type: f.type, icon: f.icon,
       total_count: n, remaining: n, cooldown_days: f.type === 'cooldown' ? +f.cooldown : null
     })
     if (error) return alert(error.message)
     setF(empty); onChange()
   }
+
   const complete = async (id) => { await supabase.from('redemptions').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', id); onChange() }
   const undo = async (r, restore) => {
     const msg = restore ? 'Visszavonod a beváltást? A kupon újra felhasználható lesz.' : 'Véglegesen törlöd ezt a bejegyzést? A kupon felhasználva marad.'
@@ -42,6 +65,22 @@ export default function AdminPanel({ tickets, reds, onChange }) {
 
   return (
     <div className="space-y-8">
+      <section className="space-y-3 rounded-2xl bg-paper/10 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-paper/60">Meghívókód a párodnak</p>
+            <p className="font-mono text-xl font-bold tracking-wider text-gold">{book.invite_code}</p>
+          </div>
+          <button type="button" onClick={copyCode} className="flex items-center gap-1.5 rounded-full bg-paper/15 px-3 py-2 text-xs font-bold">
+            <Copy size={14} /> {copied ? 'Másolva!' : 'Másolás'}
+          </button>
+        </div>
+        <form onSubmit={saveWebhook} className="flex gap-2 pt-1">
+          <input value={webhook} onChange={(e) => setWebhook(e.target.value)} placeholder="Opcionális Discord Webhook URL" className="w-full rounded-xl bg-white/90 px-3 py-2 text-xs text-ink" />
+          <button className="shrink-0 rounded-xl bg-berry px-3 py-2 text-xs font-bold">Mentés</button>
+        </form>
+      </section>
+
       <section>
         <h2 className="mb-3 font-display text-xl font-bold">Függő beváltások</h2>
         {!pending.length && <p className="text-sm text-paper/60">Nincs függő beváltás.</p>}

@@ -3,6 +3,17 @@ import { Star, Camera, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { fmtDate } from '../lib/utils'
 
+async function compressImage(file, maxSize = 1080, quality = 0.75) {
+  const bitmap = await createImageBitmap(file)
+  const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * scale)
+  canvas.height = Math.round(bitmap.height * scale)
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  return new Promise((res) => canvas.toBlob((blob) => res(blob || file), 'image/jpeg', quality))
+}
+
 const Stars = ({ value, onChange, size = 18 }) => (
   <div className="flex gap-1">
     {[1, 2, 3, 4, 5].map((n) => (
@@ -24,8 +35,10 @@ function ReviewForm({ r, onDone }) {
     setBusy(true)
     const urls = []
     for (const f of files) {
-      const path = `${r.id}/${Date.now()}-${f.name.replace(/[^\w.]/g, '_')}`
-      const { error } = await supabase.storage.from('memories').upload(path, f)
+      const compressed = await compressImage(f)
+      const baseName = f.name.replace(/\.[^.]+$/, '').replace(/[^\w]/g, '_')
+      const path = `${r.id}/${Date.now()}-${baseName}.jpg`
+      const { error } = await supabase.storage.from('memories').upload(path, compressed, { contentType: 'image/jpeg' })
       if (!error) urls.push(supabase.storage.from('memories').getPublicUrl(path).data.publicUrl)
     }
     await supabase.from('redemptions').update({ rating, review: text, photos: urls, reviewed_at: new Date().toISOString() }).eq('id', r.id)

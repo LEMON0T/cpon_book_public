@@ -1,41 +1,60 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Ticket, BookHeart, Settings, LogOut, Hourglass } from 'lucide-react'
 import { supabase } from './lib/supabase'
-import { getSavedRole } from './lib/auth'
+import { getUserBook } from './lib/auth'
 import { ICONS } from './lib/utils'
 import Login from './components/Login'
+import BookSetup from './components/BookSetup'
 import TicketCard from './components/TicketCard'
 import RedeemModal from './components/RedeemModal'
 import MemoryWall from './components/MemoryWall'
 import AdminPanel from './components/AdminPanel'
 
 export default function App() {
-  const [role, setRole] = useState(getSavedRole())
+  const [user, setUser] = useState(undefined)
+  const [book, setBook] = useState(undefined)
   const [tab, setTab] = useState('tickets')
   const [tickets, setTickets] = useState([])
   const [reds, setReds] = useState([])
   const [redeeming, setRedeeming] = useState(null)
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if (!user) { setBook(undefined); return }
+    getUserBook(user.id).then((b) => setBook(b ?? null))
+  }, [user])
+
   const load = useCallback(async () => {
+    if (!book) return
     const [t, r] = await Promise.all([
-      supabase.from('tickets').select('*').eq('is_active', true).order('created_at'),
-      supabase.from('redemptions').select('*, ticket:tickets(title, icon)').order('redeemed_at', { ascending: false })
+      supabase.from('tickets').select('*').eq('book_id', book.id).eq('is_active', true).order('created_at'),
+      supabase.from('redemptions').select('*, ticket:tickets(title, icon)').eq('book_id', book.id).order('redeemed_at', { ascending: false })
     ])
     setTickets(t.data || []); setReds(r.data || [])
-  }, [])
-  useEffect(() => { if (role) load() }, [role, load])
+  }, [book])
 
-  if (!role) return <Login onLogin={setRole} />
+  useEffect(() => { if (book) load() }, [book, load])
 
-  const logout = () => { localStorage.removeItem('wallet_auth'); setRole(null) }
+  if (user === undefined || (user && book === undefined)) return null
+  if (!user) return <Login />
+  if (!book) return <BookSetup user={user} onDone={setBook} />
+
+  const isOwner = book.owner_id === user.id
   const pending = reds.filter((r) => r.status === 'pending')
-  const tabs = [['tickets', Ticket, 'Kuponok'], ['memories', BookHeart, 'Napló'], ...(role === 'me' ? [['admin', Settings, 'Admin']] : [])]
+  const tabs = [['tickets', Ticket, 'Kuponok'], ['memories', BookHeart, 'Napló'], ...(isOwner ? [['admin', Settings, 'Admin']] : [])]
 
   return (
     <div className="mx-auto min-h-screen max-w-md pt-[env(safe-area-inset-top)]">
       <header className="flex items-center justify-between px-5 pb-2 pt-6">
-        <h1 className="font-display text-3xl font-bold">{tab === 'tickets' ? 'Kuponfüzet' : tab === 'memories' ? 'Közös napló' : 'Admin'}</h1>
-        <button onClick={logout} aria-label="Kilépés" className="text-paper/50"><LogOut size={20} /></button>
+        <h1 className="font-display text-3xl font-bold">{tab === 'tickets' ? book.title : tab === 'memories' ? 'Közös napló' : 'Admin'}</h1>
+        <button onClick={() => supabase.auth.signOut()} aria-label="Kilépés" className="text-paper/50"><LogOut size={20} /></button>
       </header>
 
       <main className="space-y-5 px-5 pb-32 pt-3">
@@ -58,7 +77,7 @@ export default function App() {
           )}
         </>}
         {tab === 'memories' && <MemoryWall reds={reds} onChange={load} />}
-        {tab === 'admin' && <AdminPanel tickets={tickets} reds={reds} onChange={load} />}
+        {tab === 'admin' && <AdminPanel book={book} onBookChange={setBook} tickets={tickets} reds={reds} onChange={load} />}
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-md justify-around border-t border-paper/10 bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
@@ -69,7 +88,7 @@ export default function App() {
         ))}
       </nav>
 
-      {redeeming && <RedeemModal ticket={redeeming} onClose={() => setRedeeming(null)} onDone={() => { setRedeeming(null); load() }} />}
+      {redeeming && <RedeemModal book={book} ticket={redeeming} onClose={() => setRedeeming(null)} onDone={() => { setRedeeming(null); load() }} />}
     </div>
   )
 }
