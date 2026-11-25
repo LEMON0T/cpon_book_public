@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { Check, Copy, Link2, QrCode, Sparkles, Trash2, Undo2, UserX } from 'lucide-react'
+import { Check, Copy, Link2, Lock, Palette, QrCode, Sparkles, Trash2, Undo2, UserX, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { ICONS, TYPE_LABEL } from '../lib/utils'
 import { RARITY } from '../lib/rarity'
 import { PACKS } from '../lib/templates'
+import { THEMES } from '../lib/levels'
 
 const empty = { title: '', description: '', category: '', type: 'unlimited', count: 3, cooldown: 30, icon: 'Heart' }
 const input = 'w-full rounded-xl bg-white/90 p-3 text-ink'
 
-export default function AdminPanel({ book, onBookChange, tickets, reds, onChange }) {
+export default function AdminPanel({ book, onBookChange, tickets, reds, wishes = [], progress, onChange }) {
   const [f, setF] = useState(empty)
   const [webhook, setWebhook] = useState(book.discord_webhook || '')
   const [notifyEmail, setNotifyEmail] = useState(book.notify_email || '')
@@ -16,6 +17,7 @@ export default function AdminPanel({ book, onBookChange, tickets, reds, onChange
   const [showQr, setShowQr] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [addingPack, setAddingPack] = useState(false)
+  const [wishTypes, setWishTypes] = useState({})
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const pending = reds.filter((r) => r.status === 'pending')
 
@@ -25,6 +27,41 @@ export default function AdminPanel({ book, onBookChange, tickets, reds, onChange
     navigator.clipboard.writeText(text)
     setCopied(label)
     setTimeout(() => setCopied(''), 1500)
+  }
+
+  const selectTheme = async (themeId) => {
+    const { data, error } = await supabase
+      .from('books')
+      .update({ theme: themeId })
+      .eq('id', book.id)
+      .select()
+      .single()
+    if (error) return alert(error.message)
+    onBookChange(data)
+  }
+
+  const approveWish = async (w) => {
+    const mode = wishTypes[w.id] || 'vip'
+    const payload = {
+      book_id: book.id,
+      title: w.title,
+      description: w.note || '',
+      category: 'Kívánság',
+      icon: 'Sparkles',
+      type: mode === 'limited2' ? 'limited' : mode,
+      total_count: mode === 'vip' ? 1 : mode === 'limited2' ? 2 : null,
+      remaining: mode === 'vip' ? 1 : mode === 'limited2' ? 2 : null,
+      cooldown_days: mode === 'cooldown' ? 7 : null
+    }
+    const { error: tErr } = await supabase.from('tickets').insert(payload)
+    if (tErr) return alert(tErr.message)
+    await supabase.from('wishes').update({ status: 'approved' }).eq('id', w.id)
+    onChange()
+  }
+
+  const rejectWish = async (id) => {
+    await supabase.from('wishes').update({ status: 'rejected' }).eq('id', id)
+    onChange()
   }
 
   const saveNotifications = async (e) => {
@@ -97,6 +134,9 @@ export default function AdminPanel({ book, onBookChange, tickets, reds, onChange
     }
   }
 
+  const currentLevel = progress?.current?.level || 1
+  const activeTheme = book.theme || 'midnight'
+
   return (
     <div className="space-y-8">
       <section className="space-y-3 rounded-2xl bg-paper/10 p-4">
@@ -138,6 +178,79 @@ export default function AdminPanel({ book, onBookChange, tickets, reds, onChange
           </div>
         </form>
       </section>
+
+      {/* Szintjutalmak: feloldható színsémák */}
+      <section className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 font-display text-xl font-bold"><Palette size={18} className="text-gold" />Füzet témája</h2>
+          <span className="text-xs text-paper/60">{currentLevel}. szint</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {Object.values(THEMES).map((t) => {
+            const unlocked = currentLevel >= t.minLevel
+            const selected = activeTheme === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                disabled={!unlocked}
+                onClick={() => selectTheme(t.id)}
+                className={`flex items-center justify-between rounded-xl border p-3 text-left text-xs transition ${
+                  selected ? 'border-gold bg-paper/15 font-bold' : unlocked ? 'border-paper/10 bg-paper/5' : 'border-paper/5 bg-paper/5 opacity-50'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="h-4 w-4 shrink-0 rounded-full border border-white/30" style={{ background: `linear-gradient(135deg, ${t.bg} 50%, ${t.berry} 50%)` }} />
+                  <span>{t.name}</span>
+                </div>
+                {!unlocked && <span className="flex items-center gap-0.5 text-[10px] text-gold"><Lock size={11} /> {t.minLevel}. sz.</span>}
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* Beérkező kívánságok a partnertől */}
+      {wishes.length > 0 && (
+        <section className="space-y-2.5">
+          <h2 className="flex items-center gap-2 font-display text-xl font-bold"><Sparkles size={18} className="text-gold" />Beérkező kívánságok ({wishes.length})</h2>
+          {wishes.map((w) => (
+            <div key={w.id} className="space-y-2.5 rounded-xl border border-gold/40 bg-gold/10 p-3.5 text-sm">
+              <div>
+                <p className="font-bold">{w.title}</p>
+                {w.note && <p className="text-xs text-paper/75">{w.note}</p>}
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={wishTypes[w.id] || 'vip'}
+                  onChange={(e) => setWishTypes({ ...wishTypes, [w.id]: e.target.value })}
+                  className="rounded-lg bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-ink"
+                >
+                  <option value="vip">Egyszeri (VIP)</option>
+                  <option value="limited2">2 alkalmas</option>
+                  <option value="unlimited">Korlátlan</option>
+                  <option value="cooldown">Heti cooldown</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => approveWish(w)}
+                  className="flex items-center gap-1 rounded-full bg-berry px-3 py-1.5 text-xs font-bold text-paper"
+                >
+                  <Check size={14} /> Jóváhagyás
+                </button>
+                <button
+                  type="button"
+                  onClick={() => rejectWish(w.id)}
+                  aria-label="Elutasítás"
+                  className="ml-auto rounded-full bg-paper/10 p-1.5 text-paper/60"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 font-display text-xl font-bold">Függő beváltások</h2>

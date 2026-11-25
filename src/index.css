@@ -1,6 +1,22 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --c-bg: #1d1226;
+  --c-paper: #f4e4dc;
+  --c-ink: #3a1c2e;
+  --c-berry: #c2255c;
+  --c-gold: #d9a441;
+}
+
 html, body, #root { min-height: 100%; }
-body { background: #1d1226; color: #f4e4dc; font-family: Nunito, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+body {
+  background: var(--c-bg);
+  color: var(--c-paper);
+  font-family: Nunito, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
 input, textarea, select { font-size: 16px; }
