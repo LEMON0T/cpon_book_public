@@ -11,6 +11,7 @@ import RedeemModal from './components/RedeemModal'
 import WishModal from './components/WishModal'
 import MemoryWall from './components/MemoryWall'
 import AdminPanel from './components/AdminPanel'
+import ResetPasswordModal from './components/ResetPasswordModal'
 
 export default function App() {
   const [user, setUser] = useState(undefined)
@@ -21,13 +22,17 @@ export default function App() {
   const [wishes, setWishes] = useState([])
   const [redeeming, setRedeeming] = useState(null)
   const [wishing, setWishing] = useState(false)
+  const [recovering, setRecovering] = useState(false)
   const [cat, setCat] = useState('Összes')
   const [query, setQuery] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecovering(true)
+      }
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -37,7 +42,6 @@ export default function App() {
     getUserBook(user.id).then((b) => setBook(b ?? null))
   }, [user])
 
-  // Aktív színséma alkalmazása
   useEffect(() => {
     const t = THEMES[book?.theme] || THEMES.midnight
     const root = document.documentElement.style
@@ -79,6 +83,7 @@ export default function App() {
     })
   }, [tickets, cat, query])
 
+  if (recovering) return <ResetPasswordModal onDone={() => setRecovering(false)} />
   if (user === undefined || (user && book === undefined)) return null
   if (!user) return <Login />
   if (!book) return <BookSetup user={user} onDone={setBook} />
@@ -100,7 +105,6 @@ export default function App() {
 
       <main className="space-y-5 px-5 pb-32 pt-3">
         {tab === 'tickets' && <>
-          {/* Közös szint és XP sáv */}
           <div className="rounded-2xl bg-paper/10 p-3.5">
             <div className="flex items-center justify-between text-xs">
               <span className="flex items-center gap-1.5 font-bold text-gold">
@@ -115,7 +119,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Partner kívánság gomb */}
           {!isOwner && (
             <button
               onClick={() => setWishing(true)}
@@ -156,7 +159,6 @@ export default function App() {
           {!tickets.length && <p className="mt-16 text-center text-paper/60">Még nincs kupon a füzetben.</p>}
           {tickets.length > 0 && !filteredTickets.length && <p className="mt-8 text-center text-sm text-paper/60">Nincs találat a szűrésre.</p>}
 
-          {/* Beküldött, jóváhagyásra váró kívánságok */}
           {wishes.length > 0 && (
             <section className="space-y-2 pt-2">
               <h2 className="flex items-center gap-2 font-display text-lg font-bold text-paper/80"><Sparkles size={16} className="text-gold" />Jóváhagyásra váró kívánságok</h2>

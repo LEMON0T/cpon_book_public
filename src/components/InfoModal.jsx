@@ -35,7 +35,7 @@ export default function InfoModal({ onClose }) {
           </h3>
           <ul className="list-disc space-y-1.5 pl-4">
             <li>
-              <strong>Jelszó megjegyzése:</strong> A regisztráció e-mailes visszaigazolás nélkül, azonnal megtörténik. Érdemes elmenteni a jelszavadat a böngészőben, mert automatikus jelszó-emlékeztető jelenleg nem működik.
+              <strong>Elfelejtett jelszó:</strong> A belépőképernyőn az <em>Elfelejtettem a jelszavam</em> gombbal bármikor kérhetsz új jelszó beállításához szükséges e-mail-linket.
             </li>
             <li>
               <strong>E-mail értesítés aktiválása:</strong> Ha füzetkészítőként beállítasz egy értesítési e-mail-címet az Admin fülön, az <em>első</em> kuponbeváltás után kapsz egy egyszeri megerősítő levelet (érdemes a Spam mappát is megnézni) — abban kattints az aktiváló gombra, utána minden értesítés automatikusan érkezik.
