@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Download, Heart, PlusSquare, Share, ShieldCheck } from 'lucide-react'
+import { Download, Heart, MoreVertical, PlusSquare, Share, ShieldCheck } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import InfoModal from './InfoModal'
 
@@ -12,7 +12,7 @@ export default function Login() {
   const [showInfo, setShowInfo] = useState(false)
 
   const [promptEvent, setPromptEvent] = useState(null)
-  const [showIosGuide, setShowIosGuide] = useState(false)
+  const [showGuide, setShowGuide] = useState(false)
   const [isStandalone, setIsStandalone] = useState(false)
 
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
@@ -28,6 +28,7 @@ export default function Login() {
     const onInstalled = () => {
       setPromptEvent(null)
       setIsStandalone(true)
+      setShowGuide(false)
     }
 
     window.addEventListener('beforeinstallprompt', onBeforeInstall)
@@ -45,9 +46,7 @@ export default function Login() {
       if (outcome === 'accepted') setPromptEvent(null)
       return
     }
-    if (isIos) {
-      setShowIosGuide((v) => !v)
-    }
+    setShowGuide((v) => !v)
   }
 
   const submit = async (e) => {
@@ -59,8 +58,6 @@ export default function Login() {
     setLoading(false)
     if (error) setErr(error.message)
   }
-
-  const canInstall = !isStandalone && (Boolean(promptEvent) || isIos)
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-7 px-8 py-10">
@@ -89,7 +86,7 @@ export default function Login() {
         {isRegister ? 'Már van fiókom, belépek' : 'Nincs még fiókom, regisztrálok'}
       </button>
 
-      {canInstall && (
+      {!isStandalone && (
         <div className="w-full max-w-xs space-y-2 pt-2">
           <button
             type="button"
@@ -99,11 +96,21 @@ export default function Login() {
             <Download size={15} className="text-gold" /> Alkalmazás telepítése a telefonra
           </button>
 
-          {showIosGuide && (
+          {showGuide && (
             <div className="space-y-1.5 rounded-2xl border border-gold/30 bg-paper/10 p-3.5 text-xs text-paper/85">
-              <p className="font-bold text-gold">Telepítés iPhone-on (Safariban):</p>
-              <p className="flex items-center gap-1.5">1. Koppints alul a <Share size={14} className="inline text-gold" /> <strong>Megosztás</strong> ikonra.</p>
-              <p className="flex items-center gap-1.5">2. Válaszd a <PlusSquare size={14} className="inline text-gold" /> <strong>Hozzáadás a főképernyőhöz</strong> opciót.</p>
+              {isIos ? (
+                <>
+                  <p className="font-bold text-gold">Telepítés iPhone-on (Safariban):</p>
+                  <p className="flex items-center gap-1.5">1. Koppints alul a <Share size={14} className="inline text-gold" /> <strong>Megosztás</strong> ikonra.</p>
+                  <p className="flex items-center gap-1.5">2. Válaszd a <PlusSquare size={14} className="inline text-gold" /> <strong>Hozzáadás a főképernyőhöz</strong> opciót.</p>
+                </>
+              ) : (
+                <>
+                  <p className="font-bold text-gold">Telepítés Androidon / böngészőből:</p>
+                  <p className="flex items-center gap-1.5">1. Koppints a jobb felső <MoreVertical size={14} className="inline text-gold" /> <strong>menü</strong> ikonra.</p>
+                  <p className="flex items-center gap-1.5">2. Válaszd az <strong>Alkalmazás telepítése</strong> vagy <strong>Hozzáadás a kezdőképernyőhöz</strong> opciót.</p>
+                </>
+              )}
             </div>
           )}
         </div>
