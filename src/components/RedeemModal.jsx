@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { notifyDiscord } from '../lib/discord'
+import { notifyOwner } from '../lib/notify'
 import { rollRarity } from '../lib/rarity'
 import CardReveal from './CardReveal'
 
@@ -27,7 +27,7 @@ export default function RedeemModal({ book, ticket, onClose, onDone }) {
       if (ticket.type === 'cooldown') patch.last_redeemed_at = new Date().toISOString()
       if (Object.keys(patch).length) await supabase.from('tickets').update(patch).eq('id', ticket.id)
     }
-    notifyDiscord(book.discord_webhook, ticket, { desired_date: date, note, rarity: rolled })
+    notifyOwner(book, ticket, { desired_date: date, note, rarity: rolled })
     setRarity(rolled)
   }
 

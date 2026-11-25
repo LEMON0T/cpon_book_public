@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Heart } from 'lucide-react'
 import { ICONS, TYPE_LABEL } from '../lib/utils'
 import { confetti, buzz } from '../lib/confetti'
@@ -8,10 +8,17 @@ const hide = { backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' 
 
 export default function CardReveal({ ticket: t, rarity = 'common', onClose }) {
   const [phase, setPhase] = useState('sealed') // sealed -> opening -> open
+  const [flash, setFlash] = useState(false)
   const [tilt, setTilt] = useState({ x: 0, y: 0, px: 50, py: 50 })
   const R = RARITY[rarity] || RARITY.common
   const Icon = ICONS[t.icon] || Heart
   const open = phase === 'open'
+
+  useEffect(() => {
+    if (!flash) return
+    const id = setTimeout(() => setFlash(false), 600)
+    return () => clearTimeout(id)
+  }, [flash])
 
   const start = () => {
     if (phase !== 'sealed') return
@@ -19,6 +26,7 @@ export default function CardReveal({ ticket: t, rarity = 'common', onClose }) {
     buzz([30, 40, 30, 40, 60, 40, 90])
     setTimeout(() => {
       setPhase('open')
+      setFlash(true)
       buzz(rarity === 'legendary' ? [200, 60, 200, 60, 400] : rarity === 'rare' ? [150, 50, 250, 50, 150] : [150, 50, 250])
       confetti(R.n, [R.glow, '#f4e4dc', '#c2255c', '#d9a441'])
     }, 900)
@@ -34,10 +42,10 @@ export default function CardReveal({ ticket: t, rarity = 'common', onClose }) {
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 px-8" style={{ background: `radial-gradient(circle at 50% 40%, ${R.glow}40, #1d1226 70%)` }}>
-      {open && <div key="flash" className="flash pointer-events-none fixed inset-0 bg-white" />}
-      <p className="font-display text-2xl">{open ? 'Beváltva ❤️' : 'Kinyitod?'}</p>
+      {flash && <div className="flash pointer-events-none fixed inset-0 z-0 bg-white opacity-0" />}
+      <p className="relative z-10 font-display text-2xl">{open ? 'Beváltva ❤️' : 'Kinyitod?'}</p>
 
-      <div style={{ perspective: 1000 }}>
+      <div className="relative z-10" style={{ perspective: 1000 }}>
         <div onClick={start} onPointerMove={move} onPointerLeave={reset} onPointerUp={reset}
           className={`relative h-[26rem] w-72 ${phase === 'opening' ? 'card-shake' : ''}`}
           style={{ transformStyle: 'preserve-3d', transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`, touchAction: 'none' }}>
@@ -69,9 +77,9 @@ export default function CardReveal({ ticket: t, rarity = 'common', onClose }) {
         </div>
       </div>
 
-      {open && R.bonus && <p className="max-w-xs text-center font-semibold" style={{ color: R.glow }}>{R.bonus}</p>}
-      {open ? <button onClick={onClose} className="rounded-full bg-paper px-8 py-3 font-bold text-ink active:scale-95">Tovább</button>
-        : <p className="h-12 text-sm text-paper/60">{phase === 'sealed' ? 'Érintsd meg a kártyát a kinyitáshoz' : '…'}</p>}
+      {open && R.bonus && <p className="relative z-10 max-w-xs text-center font-semibold" style={{ color: R.glow }}>{R.bonus}</p>}
+      {open ? <button onClick={onClose} className="relative z-20 rounded-full bg-paper px-8 py-3 font-bold text-ink shadow-lg active:scale-95">Tovább</button>
+        : <p className="relative z-10 h-12 text-sm text-paper/60">{phase === 'sealed' ? 'Érintsd meg a kártyát a kinyitáshoz' : '…'}</p>}
     </div>
   )
 }
