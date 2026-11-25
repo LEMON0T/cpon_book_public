@@ -5,6 +5,8 @@ import { ICONS, TYPE_LABEL } from '../lib/utils'
 import { RARITY } from '../lib/rarity'
 import { PACKS } from '../lib/templates'
 import { THEMES } from '../lib/levels'
+import { CalendarPlus, Check, Copy, Link2, Lock, Palette, QrCode, Sparkles, Trash2, Undo2, UserX, X } from 'lucide-react'
+import { downloadCalendarEvent } from '../lib/calendar'
 
 const empty = { title: '', description: '', category: '', type: 'unlimited', count: 3, cooldown: 30, icon: 'Heart' }
 const input = 'w-full rounded-xl bg-white/90 p-3 text-ink'
@@ -258,7 +260,17 @@ export default function AdminPanel({ book, onBookChange, tickets, reds, wishes =
         {pending.map((r) => (
           <div key={r.id} className="mb-2 flex items-center justify-between gap-3 rounded-xl bg-paper/10 p-3">
             <div className="text-sm"><p className="font-bold">{r.ticket?.title}</p><p className="text-paper/70">{r.desired_date || 'nincs dátum'}{r.note && ` · ${r.note}`}</p></div>
-            <button onClick={() => complete(r.id)} className="flex shrink-0 items-center gap-1 rounded-full bg-berry px-3 py-2 text-sm font-bold"><Check size={16} />Teljesítve</button>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => downloadCalendarEvent({ title: r.ticket?.title, desiredDate: r.desired_date, note: r.note })}
+                aria-label="Naptárba mentés"
+                className="rounded-full bg-paper/15 p-2 text-gold active:scale-95"
+              >
+                <CalendarPlus size={16} />
+              </button>
+              <button onClick={() => complete(r.id)} className="flex items-center gap-1 rounded-full bg-berry px-3 py-2 text-sm font-bold"><Check size={16} />Teljesítve</button>
+            </div>
           </div>
         ))}
       </section>

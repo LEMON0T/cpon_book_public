@@ -1,3 +1,5 @@
+import { Ticket, BookHeart, Settings, LogOut, Hourglass, Search, Sparkles, Trophy, CalendarPlus } from 'lucide-react'
+import { downloadCalendarEvent } from './lib/calendar'
 import InstallPrompt from './components/InstallPrompt'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Ticket, BookHeart, Settings, LogOut, Hourglass, Search, Sparkles, Trophy } from 'lucide-react'
@@ -181,9 +183,22 @@ export default function App() {
               {pending.map((r) => {
                 const I = ICONS[r.ticket?.icon] || Hourglass
                 return (
-                  <div key={r.id} className="flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/5 p-4">
-                    <I className="shrink-0 text-gold" />
-                    <div><p className="font-bold">{r.ticket?.title}</p><p className="text-xs text-paper/70">{r.desired_date || 'Nincs dátum'}{r.note && ` · ${r.note}`}</p></div>
+                  <div key={r.id} className="flex items-center justify-between gap-3 rounded-xl border border-gold/40 bg-gold/5 p-4">
+                    <div className="flex items-center gap-3">
+                      <I className="shrink-0 text-gold" />
+                      <div>
+                        <p className="font-bold">{r.ticket?.title}</p>
+                        <p className="text-xs text-paper/70">{r.desired_date || 'Nincs dátum'}{r.note && ` · ${r.note}`}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => downloadCalendarEvent({ title: r.ticket?.title, desiredDate: r.desired_date, note: r.note })}
+                      aria-label="Naptárba mentés"
+                      className="flex shrink-0 items-center gap-1 rounded-full border border-gold/40 bg-gold/15 px-3 py-1.5 text-xs font-bold text-gold active:scale-95"
+                    >
+                      <CalendarPlus size={14} /> Naptárba
+                    </button>
                   </div>
                 )
               })}
