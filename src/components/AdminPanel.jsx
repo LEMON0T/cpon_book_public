@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Copy, Trash2, Undo2 } from 'lucide-react'
+import { Check, Copy, Trash2, Undo2, UserX } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { ICONS, TYPE_LABEL } from '../lib/utils'
 import { RARITY } from '../lib/rarity'
@@ -11,6 +11,7 @@ export default function AdminPanel({ book, onBookChange, tickets, reds, onChange
   const [f, setF] = useState(empty)
   const [webhook, setWebhook] = useState(book.discord_webhook || '')
   const [copied, setCopied] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const pending = reds.filter((r) => r.status === 'pending')
 
@@ -63,6 +64,21 @@ export default function AdminPanel({ book, onBookChange, tickets, reds, onChange
   }
   const remove = async (t) => { if (confirm(`Törlöd: ${t.title}?`)) { await supabase.from('tickets').delete().eq('id', t.id); onChange() } }
 
+  const deleteAccount = async () => {
+    if (!confirm('Biztosan véglegesen törlöd a fiókodat, a kuponfüzetet, minden kupont és feltöltött fotót? Ez nem visszavonható!')) return
+    setDeleting(true)
+    try {
+      const allPaths = reds.flatMap((r) => (r.photos || []).map((u) => decodeURIComponent(u.split('/memories/')[1] || '')).filter(Boolean))
+      if (allPaths.length) await supabase.storage.from('memories').remove(allPaths)
+      const { error } = await supabase.rpc('delete_own_account')
+      if (error) throw error
+      await supabase.auth.signOut()
+    } catch (err) {
+      alert(err.message)
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className="space-y-8">
       <section className="space-y-3 rounded-2xl bg-paper/10 p-4">
@@ -86,52 +102,4 @@ export default function AdminPanel({ book, onBookChange, tickets, reds, onChange
         {!pending.length && <p className="text-sm text-paper/60">Nincs függő beváltás.</p>}
         {pending.map((r) => (
           <div key={r.id} className="mb-2 flex items-center justify-between gap-3 rounded-xl bg-paper/10 p-3">
-            <div className="text-sm"><p className="font-bold">{r.ticket?.title}</p><p className="text-paper/70">{r.desired_date || 'nincs dátum'}{r.note && ` · ${r.note}`}</p></div>
-            <button onClick={() => complete(r.id)} className="flex shrink-0 items-center gap-1 rounded-full bg-berry px-3 py-2 text-sm font-bold"><Check size={16} />Teljesítve</button>
-          </div>
-        ))}
-      </section>
-
-      <section>
-        <h2 className="mb-3 font-display text-xl font-bold">Összes beváltás</h2>
-        {!reds.length && <p className="text-sm text-paper/60">Még nincs beváltás.</p>}
-        {reds.map((r) => (
-          <div key={r.id} className="mb-2 rounded-xl bg-paper/10 p-3 text-sm">
-            <p className="font-bold">{r.ticket?.title} <span className="font-normal text-paper/60">· {r.status === 'pending' ? 'függőben' : 'teljesítve'}</span>{r.rarity && r.rarity !== 'common' && <span className="font-normal text-gold"> · {RARITY[r.rarity]?.name} (nem fogyott el)</span>}</p>
-            <p className="text-paper/70">{r.desired_date || 'nincs dátum'}{r.note && ` · ${r.note}`}</p>
-            <div className="mt-2 flex gap-4 text-xs">
-              <button onClick={() => undo(r, true)} className="flex items-center gap-1 text-gold"><Undo2 size={14} />Visszavonás</button>
-              <button onClick={() => undo(r, false)} className="flex items-center gap-1 text-paper/60"><Trash2 size={14} />Törlés</button>
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <form onSubmit={create} className="space-y-3">
-        <h2 className="font-display text-xl font-bold">Új kupon</h2>
-        <input required value={f.title} onChange={set('title')} placeholder="Cím" className={input} />
-        <textarea rows={2} value={f.description} onChange={set('description')} placeholder="Leírás" className={input} />
-        <input value={f.category} onChange={set('category')} placeholder="Kategória (pl. Randi)" className={input} />
-        <select value={f.type} onChange={set('type')} className={input}>{Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-        {f.type === 'limited' && <input type="number" min="1" value={f.count} onChange={set('count')} placeholder="Darabszám" className={input} />}
-        {f.type === 'cooldown' && <input type="number" min="1" value={f.cooldown} onChange={set('cooldown')} placeholder="Cooldown (nap)" className={input} />}
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(ICONS).map(([k, I]) => (
-            <button type="button" key={k} onClick={() => setF({ ...f, icon: k })} className={`grid h-11 w-11 place-items-center rounded-full ${f.icon === k ? 'bg-berry' : 'bg-paper/10'}`}><I size={20} /></button>
-          ))}
-        </div>
-        <button className="w-full rounded-full bg-berry py-3 font-bold active:scale-95">Kupon létrehozása</button>
-      </form>
-
-      <section>
-        <h2 className="mb-3 font-display text-xl font-bold">Kuponok</h2>
-        {tickets.map((t) => (
-          <div key={t.id} className="mb-2 flex items-center justify-between rounded-xl bg-paper/10 p-3 text-sm">
-            <span>{t.title} <span className="text-paper/60">({TYPE_LABEL[t.type]})</span></span>
-            <button onClick={() => remove(t)} className="text-paper/60"><Trash2 size={18} /></button>
-          </div>
-        ))}
-      </section>
-    </div>
-  )
-}
+            <div className="text-sm"><p className="font-bold">{r.ticket?.title}</p><p className="text-paper/70">{r.desired_date ||

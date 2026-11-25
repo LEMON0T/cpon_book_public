@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Gift, KeyRound, LogOut } from 'lucide-react'
+import { Gift, KeyRound, LogOut, UserX } from 'lucide-react'
 import { createBook, joinBook } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 
@@ -20,6 +20,18 @@ export default function BookSetup({ user, onDone }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  const deleteAccount = async () => {
+    if (!confirm('Biztosan véglegesen törlöd a fiókodat?')) return
+    setLoading(true)
+    const { error } = await supabase.rpc('delete_own_account')
+    if (error) {
+      setErr(error.message)
+      setLoading(false)
+      return
+    }
+    await supabase.auth.signOut()
   }
 
   return (
@@ -56,9 +68,14 @@ export default function BookSetup({ user, onDone }) {
         </form>
       )}
 
-      <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-1.5 text-xs text-paper/50">
-        <LogOut size={14} /> Kilépés
-      </button>
+      <div className="flex items-center gap-6 text-xs">
+        <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-1.5 text-paper/50">
+          <LogOut size={14} /> Kilépés
+        </button>
+        <button disabled={loading} onClick={deleteAccount} className="flex items-center gap-1.5 text-red-400/70">
+          <UserX size={14} /> Fiók törlése
+        </button>
+      </div>
     </div>
   )
 }
