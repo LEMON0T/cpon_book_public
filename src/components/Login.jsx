@@ -1,13 +1,52 @@
-import { useState } from 'react'
-import { Heart } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Download, Heart, PlusSquare, Share } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function Login() {
-  const [isRegister, setIsRegister] = useState(false)
+  const [isRegister, setIsRegister] = useState(() => Boolean(new URLSearchParams(window.location.search).get('invite')))
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
+
+  const [promptEvent, setPromptEvent] = useState(null)
+  const [showIosGuide, setShowIosGuide] = useState(false)
+  const [isStandalone, setIsStandalone] = useState(false)
+
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+
+  useEffect(() => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
+    setIsStandalone(standalone)
+
+    const onBeforeInstall = (e) => {
+      e.preventDefault()
+      setPromptEvent(e)
+    }
+    const onInstalled = () => {
+      setPromptEvent(null)
+      setIsStandalone(true)
+    }
+
+    window.addEventListener('beforeinstallprompt', onBeforeInstall)
+    window.addEventListener('appinstalled', onInstalled)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
+  }, [])
+
+  const installApp = async () => {
+    if (promptEvent) {
+      promptEvent.prompt()
+      const { outcome } = await promptEvent.userChoice
+      if (outcome === 'accepted') setPromptEvent(null)
+      return
+    }
+    if (isIos) {
+      setShowIosGuide((v) => !v)
+    }
+  }
 
   const submit = async (e) => {
     e.preventDefault()
@@ -19,8 +58,10 @@ export default function Login() {
     if (error) setErr(error.message)
   }
 
+  const canInstall = !isStandalone && (Boolean(promptEvent) || isIos)
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8 px-8">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-7 px-8 py-10">
       <div className="text-center">
         <Heart className="mx-auto mb-4 text-berry" fill="currentColor" size={40} />
         <h1 className="font-display text-4xl font-bold">Kuponfüzet</h1>
@@ -45,6 +86,26 @@ export default function Login() {
       <button onClick={() => { setIsRegister(!isRegister); setErr('') }} className="text-sm text-paper/70 underline">
         {isRegister ? 'Már van fiókom, belépek' : 'Nincs még fiókom, regisztrálok'}
       </button>
+
+      {canInstall && (
+        <div className="w-full max-w-xs space-y-2 pt-2">
+          <button
+            type="button"
+            onClick={installApp}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-paper/15 bg-paper/10 py-3 text-xs font-bold text-paper active:scale-95"
+          >
+            <Download size={15} className="text-gold" /> Alkalmazás telepítése a telefonra
+          </button>
+
+          {showIosGuide && (
+            <div className="space-y-1.5 rounded-2xl border border-gold/30 bg-paper/10 p-3.5 text-xs text-paper/85">
+              <p className="font-bold text-gold">Telepítés iPhone-on (Safariban):</p>
+              <p className="flex items-center gap-1.5">1. Koppints alul a <Share size={14} className="inline text-gold" /> <strong>Megosztás</strong> ikonra.</p>
+              <p className="flex items-center gap-1.5">2. Válaszd a <PlusSquare size={14} className="inline text-gold" /> <strong>Hozzáadás a főképernyőhöz</strong> opciót.</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
